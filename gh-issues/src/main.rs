@@ -1,8 +1,10 @@
 use std::path::PathBuf;
+use std::process::Command;
 // use std::collections::HashMap;
 use std::error::Error;
 use std::io;
 use std::process;
+use log::{debug, error, log_enabled, info, Level};
 
 use serde::Deserialize;
 use clap::{Parser, Subcommand};
@@ -46,6 +48,7 @@ fn main() {
     let args = Args::parse();
     
     println!("Debug level: {:?}", args.debug);
+    if args.debug == 1 { Level = "debug" }
 
     match &args.command {
         Commands::Create {ext, input} => {
@@ -68,11 +71,22 @@ fn main() {
 
 fn create_issues_from_csv(input:&PathBuf) -> Result<(), Box<dyn Error>> {
     let mut rd = csv::Reader::from_path(input)?;
-    
+    let mut records: Vec<Issue> = Vec::new();
+
     for result in rd.deserialize() {
         let record: Issue = result?;
-        println!("{:?}", record)
+        debug!("{:?}", record);
+        records.push(record);
     }
+
+    let cmd = Command::new("gh issue create");;
+    cmd.args(format!("-a {}", records[0].assignee))
+        .args(format!("-t {}", records[0].title))
+        .args(format!("-b {}", records[0].body))
+        .args(format!("-l {}", records[0].label))
+        .args(format!("-m {}", records[0].milestone));
+    let output = cmd.output();
+    println!("{:?}", output);
     
     return Ok(())
 }
